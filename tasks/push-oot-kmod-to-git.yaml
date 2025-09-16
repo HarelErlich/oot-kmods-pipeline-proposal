@@ -1,0 +1,63 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: push-oot-kmods-to-git
+spec:
+  description: >-
+    Task to upload out-of-tree kernel modules to a private vendor git repo.
+  params:
+    - name: signedKmodsPath
+      type: string
+      description: Path where the kernel modules are stored relative to the dataDir.
+    - name: dataDir
+      type: string
+      description: The absolute path to the working directory.
+    - name: gitRepoUrl
+      type: string
+      description: Repository URL where the signed modules will be pushed.
+    - name: gitBranch
+      type: string
+      description: Specific branch in the repository.
+    - name: gitTokenSecret
+      type: string
+      description: The name of the Kubernetes secret containing the Git token.
+  steps:
+    - name: push-to-git
+      image: quay.io/konflux-ci/release-service-utils:0f82be4be43294b6a96846d87ef7f7c0b9e34267
+      env:
+        - name: PUSH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: $(params.gitTokenSecret)
+              key: gitlab-gr-maintenance-token
+      script: |
+        #!/usr/bin/env sh
+        set -euxo pipefail
+
+        SIGNED_KMODS_PATH="$(params.dataDir)/$(params.signedKmodsPath)"
+        REPO_URL="$(params.gitRepoUrl)"
+
+        echo "PATH: ${SIGNED_KMODS_PATH} to ${REPO_URL}"
+        mkdir -p "${SIGNED_KMODS_PATH}"
+        cd "${SIGNED_KMODS_PATH}" || exit 1
+        git lfs install
+
+        PUSH_TOKEN_CLEAN=$(printf "%s" "$PUSH_TOKEN" | tr -d '\n')
+        GIT_URL_WITH_AUTH="https://gitlab-ci-token:${PUSH_TOKEN_CLEAN}@${REPO_URL}"
+        
+        git clone "$GIT_URL_WITH_AUTH" local-artifacts
+        
+        # shellcheck source=/dev/null
+        . ./envfile
+        mkdir -p "local-artifacts/${DRIVER_VENDOR}_${DRIVER_VERSION}_${KERNEL_VERSION}"
+        mv -- *.ko "local-artifacts/${DRIVER_VENDOR}_${DRIVER_VERSION}_${KERNEL_VERSION}/"
+        rm envfile
+        
+        cd local-artifacts || exit 1
+        git checkout $(params.gitBranch)
+        git config --global user.email "partner-accelerators@konflux-ci.redhat.com"
+        git config --global user.name "Partner Accelerators CI Bot"
+
+        git add .
+        git commit -m "Automated push from Build and Sign pipeline"
+        git push -u origin $(params.gitBranch)ד

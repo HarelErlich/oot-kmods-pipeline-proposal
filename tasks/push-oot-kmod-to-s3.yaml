@@ -1,0 +1,59 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: push-oot-kmods-to-s3
+spec:
+  description: >-
+    Task to upload out-of-tree kernel modules to an S3 bucket.
+  params:
+    - name: signedKmodsPath
+      type: string
+      description: Path where the kernel modules are stored relative to the dataDir.
+    - name: dataDir
+      type: string
+      description: The absolute path to the working directory.
+    - name: s3Endpoint
+      type: string
+      description: The S3 endpoint URL.
+    - name: s3Bucket
+      type: string
+      description: The name of the destination S3 bucket.
+    - name: s3CredentialsSecret
+      type: string
+      description: The name of the Kubernetes secret containing S3 credentials.
+  steps:
+    - name: upload-to-s3
+      image: amazon/aws-cli:2.13.13
+      env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: $(params.s3CredentialsSecret)
+              key: aws_access_key_id
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: $(params.s3CredentialsSecret)
+              key: aws_secret_access_key
+      script: |
+        #!/usr/bin/env sh
+        set -euxo pipefail
+
+        SIGNED_KMODS_FULL_PATH="$(params.dataDir)/$(params.signedKmodsPath)"
+
+        # shellcheck source=/dev/null
+        . "${SIGNED_KMODS_FULL_PATH}/envfile"
+
+        S3_TARGET_PATH="${DRIVER_VENDOR}/${DRIVER_VERSION}/${KERNEL_VERSION}/"
+
+        echo "Uploading signed kernel modules to s3://$(params.s3Bucket)/${S3_TARGET_PATH}"
+
+        aws s3 cp \
+          "${SIGNED_KMODS_FULL_PATH}" \
+          "s3://$(params.s3Bucket)/${S3_TARGET_PATH}" \
+          --endpoint-url "$(params.s3Endpoint)" \
+          --recursive \
+          --exclude "*" \
+          --include "*.ko"
+
+        echo "Upload complete."

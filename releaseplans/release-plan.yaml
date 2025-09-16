@@ -1,0 +1,32 @@
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: ReleasePlan
+metadata:
+  labels:
+    release.appstudio.openshift.io/auto-release: "true"
+    release.appstudio.openshift.io/releasePlanAdmission: partners-kmod-accel
+    release.appstudio.openshift.io/standing-attribution: "true"
+  name: nvidia-build-and-sign
+  namespace: partners-kmod-accel-tenant
+spec:
+  application: nvidia-build-and-sign
+  target: rhtap-releng-tenant
+  data:
+    pushToGit: "true"
+    pushToS3: "true"
+    git:
+      repoUrl: "gitlab.cee.redhat.com/partner-accelerators/artifact-storage.git"
+      branch: "main"
+      tokenSecret: "gitlabcomstorage"
+    s3:
+      endpoint: "https://s3.us-east-1.amazonaws.com"
+      bucket: "artifact-storage"
+      credentialsSecret: "s3-secret-name"
+    ootsign:
+      kmodsPath: "/opt/drivers/open-gpu-kernel-modules/kernel-open"
+      vendor: "nvidia"
+      signedKmodsPath: "signed-kmods"
+      signing-secret: "nvidia-internal-signing"
+      signingAuthor: "Partners Accelerator Team"
+      checksumKeytab: "build-and-sign-keytab"
+      checksumFingerprint: "signing-checksum-fingerprint"
