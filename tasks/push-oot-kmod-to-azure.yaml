@@ -1,0 +1,86 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: push-oot-kmods-to-azure
+spec:
+  description: >-
+    Task to upload out-of-tree kernel modules to Azure Blob Storage.
+  params:
+    - name: signedKmodsPath
+      type: string
+      description: Path where the kernel modules are stored relative to the dataDir.
+    - name: dataDir
+      type: string
+      description: The absolute path to the working directory.
+    - name: azureStorageAccount
+      type: string
+      description: Azure Storage account name (e.g., mystorageaccount).
+    - name: azureContainer
+      type: string
+      description: Azure Blob container name (e.g., kmods-artifacts).
+    - name: azureSpSecret
+      type: string
+      description: Kubernetes Secret with AZURE_TENANT_ID, AZURE_CLIENT_ID, and AZURE_CLIENT_SECRET.
+  steps:
+    - name: upload-to-azure
+      image: mcr.microsoft.com/azure-cli:latest
+      env:
+        - name: AZURE_TENANT_ID
+          valueFrom:
+            secretKeyRef:
+              name: $(params.azureSpSecret)
+              key: AZURE_TENANT_ID
+        - name: AZURE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: $(params.azureSpSecret)
+              key: AZURE_CLIENT_ID
+        - name: AZURE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: $(params.azureSpSecret)
+              key: AZURE_CLIENT_SECRET
+      script: |
+        #!/usr-bin/env bash
+        set -euxo pipefail
+
+        SIGNED_KMODS_FULL_PATH="$(params.dataDir)/$(params.signedKmodsPath)"
+        ACCOUNT="$(params.azureStorageAccount)"
+        CONTAINER="$(params.azureContainer)"
+
+        # Source the envfile to get version details
+        # shellcheck source=/dev/null
+        . "${SIGNED_KMODS_FULL_PATH}/envfile"
+
+        AZURE_TARGET_PATH="${DRIVER_VENDOR}/${DRIVER_VERSION}/${KERNEL_VERSION}/"
+
+        echo "Logging into Azure..."
+        az login --service-principal \
+          -u "$AZURE_CLIENT_ID" \
+          -p "$AZURE_CLIENT_SECRET" \
+          --tenant "$AZURE_TENANT_ID" \
+          --allow-no-subscriptions
+
+        echo "Ensuring container '${CONTAINER}' exists..."
+        az storage container create \
+          --name "$CONTAINER" \
+          --account-name "$ACCOUNT" \
+          --auth-mode login >/dev/null
+
+        echo "Uploading signed kernel modules to Azure Blob Storage: ${ACCOUNT}/${CONTAINER}/${AZURE_TARGET_PATH}"
+
+        for f in "${SIGNED_KMODS_FULL_PATH}"/*.ko; do
+          if [ -f "$f" ]; then
+            BLOB_NAME="${AZURE_TARGET_PATH}$(basename "$f")"
+            echo "Uploading ${f} to ${BLOB_NAME}..."
+            az storage blob upload \
+              --account-name "$ACCOUNT" \
+              --container-name "$CONTAINER" \
+              --name "$BLOB_NAME" \
+              --file "$f" \
+              --auth-mode login \
+              --overwrite
+          fi
+        done
+
+        echo "Upload complete."

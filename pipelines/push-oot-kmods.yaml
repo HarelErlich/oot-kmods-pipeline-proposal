@@ -123,21 +123,25 @@ spec:
             [
               {"resultIndex": 0, "key": ".pushToGit", "default": "false"},
               {"resultIndex": 1, "key": ".pushToS3", "default": "false"},
-              {"resultIndex": 2, "key": ".git.repoUrl"},
-              {"resultIndex": 3, "key": ".git.branch", "default": "main"},
-              {"resultIndex": 4, "key": ".git.tokenSecret"},
-              {"resultIndex": 5, "key": ".s3.endpoint"},
-              {"resultIndex": 6, "key": ".s3.bucket"},
-              {"resultIndex": 7, "key": ".s3.credentialsSecret"},
-              {"resultIndex": 8, "key": ".ootsign.signing-secret"},
-              {"resultIndex": 9, "key": ".ootsign.signingAuthor"},
-              {"resultIndex": 10, "key": ".ootsign.checksumFingerprint"},
-              {"resultIndex": 11, "key": ".ootsign.checksumKeytab"},
-              {"resultIndex": 12, "key": ".ootsign.kmodsPath"},
-              {"resultIndex": 13, "key": ".ootsign.signedKmodsPath"},
-              {"resultIndex": 14, "key": ".ootsign.vendor"},
-              {"resultIndex": 15, "key": ".conforma.workerCount", "default": "4"},
-              {"resultIndex": 16, "key": ".conforma.timeout", "default": "8h0m0s"}
+              {"resultIndex": 2, "key": ".pushToAzure", "default": "false"},
+              {"resultIndex": 3, "key": ".git.repoUrl"},
+              {"resultIndex": 4, "key": ".git.branch", "default": "main"},
+              {"resultIndex": 5, "key": ".git.tokenSecret"},
+              {"resultIndex": 6, "key": ".s3.endpoint"},
+              {"resultIndex": 7, "key": ".s3.bucket"},
+              {"resultIndex": 8, "key": ".s3.credentialsSecret"},
+              {"resultIndex": 9, "key": ".azure.storageAccount"},
+              {"resultIndex": 10, "key": ".azure.container"},
+              {"resultIndex": 11, "key": ".azure.spSecret"},
+              {"resultIndex": 12, "key": ".ootsign.signing-secret"},
+              {"resultIndex": 13, "key": ".ootsign.signingAuthor"},
+              {"resultIndex": 14, "key": ".ootsign.checksumFingerprint"},
+              {"resultIndex": 15, "key": ".ootsign.checksumKeytab"},
+              {"resultIndex": 16, "key": ".ootsign.kmodsPath"},
+              {"resultIndex": 17, "key": ".ootsign.signedKmodsPath"},
+              {"resultIndex": 18, "key": ".ootsign.vendor"},
+              {"resultIndex": 19, "key": ".conforma.workerCount", "default": "4"},
+              {"resultIndex": 20, "key": ".conforma.timeout", "default": "8h0m0s"}
             ]
         - name: taskGitUrl
           value: "$(params.taskGitUrl)"
@@ -303,9 +307,9 @@ spec:
         - name: EXTRA_RULE_DATA
           value: $(params.enterpriseContractExtraRuleData)
         - name: TIMEOUT
-          value: "$(tasks.collect-task-params.results.extractedValues[16])"
+          value: "$(tasks.collect-task-params.results.extractedValues[20])"
         - name: WORKERS
-          value: "$(tasks.collect-task-params.results.extractedValues[15])"
+          value: "$(tasks.collect-task-params.results.extractedValues[19])"
         - name: SOURCE_DATA_ARTIFACT
           value: "$(tasks.apply-mapping.results.sourceDataArtifact)"
         - name: TRUSTED_ARTIFACTS_DEBUG
@@ -327,9 +331,9 @@ spec:
         - name: snapshotPath
           value: "$(tasks.collect-data.results.snapshotSpec)"
         - name: kmodsPath
-          value: $(tasks.collect-task-params.results.extractedValues[12])
+          value: $(tasks.collect-task-params.results.extractedValues[16])
         - name: signedKmodsPath
-          value: $(tasks.collect-task-params.results.extractedValues[13])
+          value: $(tasks.collect-task-params.results.extractedValues[17])
         - name: snapshot
           value: $(params.snapshot)
         - name: sourceDataArtifact
@@ -361,17 +365,17 @@ spec:
         - name: dataPath
           value: "$(tasks.collect-data.results.data)"
         - name: signedKmodsPath
-          value: $(tasks.collect-task-params.results.extractedValues[13])
+          value: $(tasks.collect-task-params.results.extractedValues[17])
         - name: kerberosRealm
           value: IPA.REDHAT.COM
         - name: signingAuthor
-          value: $(tasks.collect-task-params.results.extractedValues[9])
+          value: $(tasks.collect-task-params.results.extractedValues[13])
         - name: checksumFingerprint
-          value: $(tasks.collect-task-params.results.extractedValues[10])
+          value: $(tasks.collect-task-params.results.extractedValues[14])
         - name: checksumKeytab
-          value: $(tasks.collect-task-params.results.extractedValues[11])
+          value: $(tasks.collect-task-params.results.extractedValues[15])
         - name: signing-secret
-          value: $(tasks.collect-task-params.results.extractedValues[8])
+          value: $(tasks.collect-task-params.results.extractedValues[12])
         - name: sourceDataArtifact
           value: "$(tasks.extract-oot-kmods.results.sourceDataArtifact)"
         - name: ociStorage
@@ -428,15 +432,15 @@ spec:
             value: tasks/managed/push-oot-kmods-to-git.yaml
       params:
         - name: signedKmodsPath
-          value: $(tasks.collect-task-params.results.extractedValues[13])
+          value: $(tasks.collect-task-params.results.extractedValues[17])
         - name: dataDir
           value: $(params.dataDir)
         - name: gitRepoUrl
-          value: $(tasks.collect-task-params.results.extractedValues[2])
-        - name: gitBranch
           value: $(tasks.collect-task-params.results.extractedValues[3])
-        - name: gitTokenSecret
+        - name: gitBranch
           value: $(tasks.collect-task-params.results.extractedValues[4])
+        - name: gitTokenSecret
+          value: $(tasks.collect-task-params.results.extractedValues[5])
       runAfter:
         - prepare-and-finalize-artifacts
     - name: push-to-s3
@@ -455,14 +459,41 @@ spec:
             value: tasks/managed/push-oot-kmods-to-s3.yaml
       params:
         - name: signedKmodsPath
-          value: $(tasks.collect-task-params.results.extractedValues[13])
+          value: $(tasks.collect-task-params.results.extractedValues[17])
         - name: dataDir
           value: $(params.dataDir)
         - name: s3Endpoint
-          value: $(tasks.collect-task-params.results.extractedValues[5])
-        - name: s3Bucket
           value: $(tasks.collect-task-params.results.extractedValues[6])
-        - name: s3CredentialsSecret
+        - name: s3Bucket
           value: $(tasks.collect-task-params.results.extractedValues[7])
+        - name: s3CredentialsSecret
+          value: $(tasks.collect-task-params.results.extractedValues[8])
+      runAfter:
+        - prepare-and-finalize-artifacts
+    - name: push-to-azure
+      when:
+        - input: "$(tasks.collect-task-params.results.extractedValues[2])"
+          operator: in
+          values: ["true"]
+      taskRef:
+        resolver: "git"
+        params:
+          - name: url
+            value: $(params.taskGitUrl)
+          - name: revision
+            value: $(params.taskGitRevision)
+          - name: pathInRepo
+            value: tasks/managed/push-oot-kmods-to-azure.yaml
+      params:
+        - name: signedKmodsPath
+          value: $(tasks.collect-task-params.results.extractedValues[17])
+        - name: dataDir
+          value: $(params.dataDir)
+        - name: azureStorageAccount
+          value: $(tasks.collect-task-params.results.extractedValues[9])
+        - name: azureContainer
+          value: $(tasks.collect-task-params.results.extractedValues[10])
+        - name: azureSpSecret
+          value: $(tasks.collect-task-params.results.extractedValues[11])
       runAfter:
         - prepare-and-finalize-artifacts

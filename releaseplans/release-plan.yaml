@@ -14,6 +14,7 @@ spec:
   data:
     pushToGit: "true"
     pushToS3: "true"
+    pushToAzure: "true"
     git:
       repoUrl: "gitlab.cee.redhat.com/partner-accelerators/artifact-storage.git"
       branch: "main"
@@ -22,6 +23,10 @@ spec:
       endpoint: "https://s3.us-east-1.amazonaws.com"
       bucket: "artifact-storage"
       credentialsSecret: "s3-secret-name"
+    azure:
+      storageAccount: "your-azure-storage-account"
+      container: "kmods-artifacts"
+      spSecret: "azure-sp-secret-name"
     ootsign:
       kmodsPath: "/opt/drivers/open-gpu-kernel-modules/kernel-open"
       vendor: "nvidia"
